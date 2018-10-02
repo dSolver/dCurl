@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>dCurl - the cool way to download large files</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        #progress {
+            display: flex;
+            height: 30px;
+            margin: 8px;
+        }
+
+        #progress>* {
+            flex: 1 1;
+            width: 5px;
+        }
+
+        .received {
+            background-color: blue;
+        }
+
+        .written {
+            background-color: green;
+        }
+    </style>
+</head>
+
+<body>
+    <input type="text" id="url" placeholder="url" value="http://f30f185f.bwtest-aws.pravala.com/384MB.jar">
+    <input type="text" id="output" placeholder="output file">
+    <input type="number" id="chunkSize" placeholder="chunk size (Bytes, default 1 MiB)">
+    <input type="number" id="maxSize" placeholder="max size to download (Bytes, default 4 MiB)">
+    <button id="download">GET</button>
+    <div id="progress"></div>
+    <div id="outputLocation"></div>
+    <script>
+        const socket = io();
+        let inProg = false;
+
+        const downloadBtn = document.getElementById('download');
+        const urlInput = document.getElementById('url');
+        const outputInput = document.getElementById('output');
+        const chunkSizeInput = document.getElementById('chunkSize');
+        const maxSizeInput = document.getElementById('maxSize');
+
+        const progress = document.getElementById('progress');
+        const outputLocationDiv = document.getElementById('outputLocation');
+        let latestStateUpdate;
+
+        downloadBtn.addEventListener('click', (evt) => {
+
+            if (urlInput.value) {
+                outputLocationDiv.innerHTML = '';
+
+                inProg = true;
+                downloadBtn.attributes.disabled = true;
+                socket.emit('request', {
+                    url: urlInput.value,
+                    output: outputInput.value,
+                    chunkSize: chunkSizeInput.value,
+                    maxSize: maxSizeInput.value
+                });
+                latestStateUpdate = Date.now();
+                progress.innerHTML = '';
+            }
+        });
+
+        socket.on('state', (state) => {
+            if (state.timestamp > latestStateUpdate) {
+                latestStateUpdate = state.timestamp;
+                if (Object.keys(state).every((k) => {
+                    return state.state[k] === 'Written';
+                })) {
+                    inProg = false;
+                    downloadBtn.attributes.disabled = false;
+                }
+                renderState(state);
+            } else {
+                // ignore it
+            }
+
+        });
+
+        socket.on('finished', (path) => {
+            outputLocationDiv.innerHTML = `File successfully generated at: path`;
+        });
+
+        function renderState(state) {
+            progress.innerHTML = Object.keys(state.state).map((k) => {
+                return `<div class='${state.state[k].toLowerCase()}'></div>`
+            }).join('');
+        }
+    </script>
+</body>
+
+</html>
