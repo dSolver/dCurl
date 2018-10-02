@@ -27,7 +27,7 @@
 </head>
 
 <body>
-    <input type="text" id="url" placeholder="url" value="http://f30f185f.bwtest-aws.pravala.com/384MB.jar">
+    <input type="text" required id="url" placeholder="url" value="http://f30f185f.bwtest-aws.pravala.com/384MB.jar">
     <input type="text" id="output" placeholder="output file">
     <input type="number" id="chunkSize" placeholder="chunk size (Bytes, default 1 MiB)">
     <input type="number" id="maxSize" placeholder="max size to download (Bytes, default 4 MiB)">
@@ -36,7 +36,6 @@
     <div id="outputLocation"></div>
     <script>
         const socket = io();
-        let inProg = false;
 
         const downloadBtn = document.getElementById('download');
         const urlInput = document.getElementById('url');
@@ -46,14 +45,14 @@
 
         const progress = document.getElementById('progress');
         const outputLocationDiv = document.getElementById('outputLocation');
+
         let latestStateUpdate;
 
         downloadBtn.addEventListener('click', (evt) => {
-
+            // urlInput is required
             if (urlInput.value) {
                 outputLocationDiv.innerHTML = '';
 
-                inProg = true;
                 downloadBtn.disabled = true;
                 socket.emit('request', {
                     url: urlInput.value,
@@ -69,23 +68,24 @@
         socket.on('state', (state) => {
             if (state.timestamp > latestStateUpdate) {
                 latestStateUpdate = state.timestamp;
-                if (Object.keys(state).every((k) => {
+                // check if everything was written in the state
+                if (Object.keys(state.state).every((k) => {
                     return state.state[k] === 'Written';
                 })) {
-                    inProg = false;
                     downloadBtn.disabled = false;
                 }
                 renderState(state);
             } else {
-                // ignore it
+                // ignore it, this message is too late
             }
 
         });
 
         socket.on('finished', (path) => {
-            outputLocationDiv.innerHTML = `File successfully generated at: path`;
+            outputLocationDiv.innerHTML = `File successfully generated at: ${path}`;
         });
 
+        // we use a render state function here, which just replaces innerHTML, but this is an effective way to update the DOM when changes are not too complex
         function renderState(state) {
             progress.innerHTML = Object.keys(state.state).map((k) => {
                 return `<div class='${state.state[k].toLowerCase()}'></div>`
