@@ -20,7 +20,6 @@ app.use(express.static('public'));
 io.on('connection', function (socket) {
     console.log('Connected');
     socket.on('request', (r) => {
-        console.log(r);
         dCurl.getFile(r.url, r.output, parseInt(r.chunkSize) || 1 << 20, parseInt(r.maxSize) || 4 << 20, socket);
     });
 });
@@ -56,8 +55,6 @@ const dCurl = {
 
         req.output = path.join('output', output);
 
-        console.log(req.chunkSize, req.maxSize);
-
         dCurl.explore(req, socket);
     },
     // makes a 1 byte request just to find out the size of the file
@@ -71,8 +68,11 @@ const dCurl = {
         };
 
         request.get(req.url, options, (err, resp, body) => {
-            if(err){
+            if (err) {
+                // hope we don't get here, the UI isn't ready to handle errors
+                // TODO: UI to handle the error in explore (maybe tell the user to check the url)
                 console.log(err);
+                return;
             }
             const values = dCurl.parseContentRange(resp);
             let size = values.size;
@@ -112,7 +112,7 @@ const dCurl = {
 
         request.get(req.url, options, (err, resp, data) => {
             if (err) {
-                // retry
+                // retry, if we were able to read the file in the explore phase, chances are we should be able to read it here too.
                 console.log(err);
                 dCurl.makeRequest(req, chunk);
             } else {
@@ -130,7 +130,7 @@ const dCurl = {
 
                 req.received++; // increment number of chunks we've gotten back
 
-                if (req.received >= req.maxChunks) {
+                if (req.received === req.maxChunks) {
                     req.allBlobsDownloaded = true; // mark all blobs downloaded so that writeFile will know to not wait for any more requests to trigger it
                 }
 
@@ -184,9 +184,9 @@ const dCurl = {
                 if (req.blobs.length > 0) {
                     dCurl.writeFile(req, socket);
                 } else {
-                    req.ws.end();
-                    console.log('end');
-                    if(socket){
+                    req.ws.end(); // close the stream since we are no longer expecting any more writes
+
+                    if (socket) {
                         socket.emit('finished', req.output);
                     }
                 }
@@ -206,5 +206,3 @@ const dCurl = {
 
     }
 }
-
-//dCurl.getFile('http://f30f185f.bwtest-aws.pravala.com/384MB.jar', `${Date.now()}.file`);
