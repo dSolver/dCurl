@@ -54,7 +54,7 @@
                 outputLocationDiv.innerHTML = '';
 
                 inProg = true;
-                downloadBtn.attributes.disabled = true;
+                downloadBtn.disabled = true;
                 socket.emit('request', {
                     url: urlInput.value,
                     output: outputInput.value,
@@ -73,7 +73,7 @@
                     return state.state[k] === 'Written';
                 })) {
                     inProg = false;
-                    downloadBtn.attributes.disabled = false;
+                    downloadBtn.disabled = false;
                 }
                 renderState(state);
             } else {

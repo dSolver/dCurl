@@ -16,7 +16,7 @@ server.listen(3000);
 // Public folder has all the stuff for the front end
 app.use(express.static('public'));
 
-
+// Typically endpoint handling details such as this are handled in other files then imported
 io.on('connection', function (socket) {
     console.log('Connected');
     socket.on('request', (r) => {
@@ -24,8 +24,8 @@ io.on('connection', function (socket) {
     });
 });
 
+// Ideally, this dCurl object is exported and put into a different file, leaving the index to be just the entry point for the server
 const dCurl = {
-    requests: [],
     getFile: (url, output, chunkSize, maxSize, socket) => {
         // kicks off the process to get a file
 
